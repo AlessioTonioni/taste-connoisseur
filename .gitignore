@@ -1,0 +1,31 @@
+# ── Personal data ──
+taste_buddy.db
+raw_dump.txt
+*.db
+*.db-shm
+*.db-wal
+
+# ── One-off / local-only scripts ──
+import.py
+CLAUDE.md
+
+# ── Secrets ──
+.env
+.env.*
+start.sh
+
+# ── Python ──
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+dist/
+build/
+*.egg-info/
+
+# ── Claude Code ──
+.claude/
+
+# ── macOS ──
+.DS_Store

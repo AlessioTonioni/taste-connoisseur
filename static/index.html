@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taste Buddy</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f7f6f3;
+      --surface:   #ffffff;
+      --border:    #e4e2dc;
+      --text:      #1c1c1a;
+      --muted:     #8a8880;
+      --movie:     #2563eb;
+      --series:    #d97706;
+      --book:      #16a34a;
+      --comic:     #9333ea;
+      --movie-bg:  #eff6ff;
+      --series-bg: #fffbeb;
+      --book-bg:   #f0fdf4;
+      --comic-bg:  #faf5ff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--text);
+      color: var(--bg);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 { font-size: 1rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    .header-nav { display: flex; gap: 0.4rem; }
+
+    .header-nav button {
+      background: transparent;
+      border: 1px solid #444;
+      color: var(--bg);
+      padding: 0.3rem 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .header-nav button:hover,
+    .header-nav button.active {
+      background: var(--bg);
+      color: var(--text);
+      border-color: var(--bg);
+    }
+
+    /* ── Layout ── */
+    main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Type tabs ── */
+    .type-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab:hover { color: var(--text); border-color: #bbb; }
+    .tab.active[data-type="all"]    { background: var(--text);       color: #fff;            border-color: var(--text); }
+    .tab.active[data-type="movie"]  { background: var(--movie-bg);   color: var(--movie);    border-color: var(--movie); }
+    .tab.active[data-type="series"] { background: var(--series-bg);  color: var(--series);   border-color: var(--series); }
+    .tab.active[data-type="book"]   { background: var(--book-bg);    color: var(--book);     border-color: var(--book); }
+    .tab.active[data-type="comic"]  { background: var(--comic-bg);   color: var(--comic);    border-color: var(--comic); }
+
+    /* ── Year pills ── */
+    .year-pills {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .year-pill {
+      padding: 0.2rem 0.7rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .year-pill:hover { color: var(--text); border-color: #bbb; }
+    .year-pill.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .toolbar input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      font-size: 0.875rem;
+      outline: none;
+    }
+
+    .toolbar input:focus { border-color: #999; }
+
+    /* ── Section headers ── */
+    .type-section { margin-bottom: 2rem; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .section-header[data-type="movie"]  { border-color: var(--movie); }
+    .section-header[data-type="series"] { border-color: var(--series); }
+    .section-header[data-type="book"]   { border-color: var(--book); }
+    .section-header[data-type="comic"]  { border-color: var(--comic); }
+
+    .section-header h2 { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .section-header[data-type="movie"]  h2 { color: var(--movie); }
+    .section-header[data-type="series"] h2 { color: var(--series); }
+    .section-header[data-type="book"]   h2 { color: var(--book); }
+    .section-header[data-type="comic"]  h2 { color: var(--comic); }
+
+    .section-count { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
+
+    /* ── Cards ── */
+    .entry-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .entry-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid transparent;
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .entry-card[data-type="movie"]  { border-left-color: var(--movie); }
+    .entry-card[data-type="series"] { border-left-color: var(--series); }
+    .entry-card[data-type="book"]   { border-left-color: var(--book); }
+    .entry-card[data-type="comic"]  { border-left-color: var(--comic); }
+
+    .entry-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .entry-title { font-weight: 600; font-size: 0.95rem; line-height: 1.3; }
+
+    .entry-year { font-size: 0.75rem; color: var(--muted); font-weight: 500; flex-shrink: 0; }
+
+    .entry-review {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .entry-actions { display: flex; gap: 0.4rem; margin-top: 0.2rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 0.25rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .btn:hover          { background: var(--bg); color: var(--text); }
+    .btn-danger:hover   { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+    .btn-primary        { background: var(--text); color: #fff; border-color: var(--text); font-weight: 600; }
+    .btn-primary:hover  { background: #333; }
+    .btn-primary:disabled { background: #888; border-color: #888; cursor: not-allowed; }
+
+    /* ── Form ── */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-card h2 { font-size: 1rem; font-weight: 700; }
+
+    .form-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      flex: 1;
+      min-width: 130px;
+    }
+
+    .form-group label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 0.45rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.875rem;
+      font-family: inherit;
+      background: var(--surface);
+      width: 100%;
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: #999; }
+
+    .form-group textarea { resize: vertical; min-height: 120px; }
+
+    .form-actions { display: flex; gap: 0.5rem; padding-top: 0.25rem; }
+
+    /* ── Profile view ── */
+    .profile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .profile-header h2 { font-size: 1rem; font-weight: 700; }
+
+    .profile-meta { font-size: 0.75rem; color: var(--muted); }
+
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    #profile-text {
+      width: 100%;
+      min-height: 260px;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.9rem;
+      line-height: 1.75;
+      color: var(--text);
+      resize: vertical;
+      background: transparent;
+    }
+
+    .profile-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+
+    .profile-empty {
+      color: var(--muted);
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+
+    /* ── Suggest view ── */
+    .suggest-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .suggest-card p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+
+    .suggest-type-btn { font-size: 0.875rem; padding: 0.45rem 1.25rem; font-weight: 600; }
+    .suggest-type-btn[data-type="movie"]:hover  { background: var(--movie-bg);  color: var(--movie);  border-color: var(--movie); }
+    .suggest-type-btn[data-type="series"]:hover { background: var(--series-bg); color: var(--series); border-color: var(--series); }
+    .suggest-type-btn[data-type="book"]:hover   { background: var(--book-bg);   color: var(--book);   border-color: var(--book); }
+    .suggest-type-btn[data-type="comic"]:hover  { background: var(--comic-bg);  color: var(--comic);  border-color: var(--comic); }
+    .suggest-type-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .suggest-output {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      white-space: pre-wrap;
+      line-height: 1.75;
+      font-size: 0.875rem;
+    }
+
+    /* ── Rich suggestion result card ── */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      gap: 0;
+    }
+
+    .result-thumb-wrap {
+      flex-shrink: 0;
+      width: 130px;
+      background: var(--bg);
+      display: flex;
+      align-items: stretch;
+    }
+
+    .result-thumb-wrap img {
+      width: 130px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .result-thumb-placeholder {
+      width: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      color: var(--muted);
+      opacity: 0.4;
+    }
+
+    .result-body {
+      flex: 1;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .result-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .result-year {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .result-text {
+      font-size: 0.875rem;
+      line-height: 1.75;
+      color: #444;
+    }
+
+    .result-links {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .result-link {
+      display: inline-block;
+      padding: 0.3rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .result-link:hover { background: var(--bg); color: var(--text); border-color: #bbb; }
+    .result-link.imdb:hover      { background: #fef9c3; color: #854d0e; border-color: #fcd34d; }
+    .result-link.justwatch:hover { background: #eff6ff; color: var(--movie); border-color: #93c5fd; }
+    .result-link.amazon:hover    { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+
+    @media (max-width: 480px) {
+      .result-card { flex-direction: column; }
+      .result-thumb-wrap, .result-thumb-wrap img, .result-thumb-placeholder { width: 100%; height: 180px; }
+    }
+
+    /* ── Debug prompt panel ── */
+    .debug-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 0.6rem;
+    }
+
+    .btn-debug {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.6rem;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-debug:hover  { color: var(--text); border-color: #aaa; }
+    .btn-debug.active { color: var(--text); border-color: #aaa; background: var(--bg); }
+
+    .debug-prompt {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      font-size: 0.78rem;
+      font-family: "SF Mono", "Fira Code", monospace;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 1rem;
+    }
+
+    .spinner { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty  { color: var(--muted); text-align: center; padding: 1.5rem 0; font-size: 0.85rem; }
+    .error  { color: #dc2626; }
+
+    mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
+
+    .markdown { line-height: 1.75; font-size: 0.9rem; }
+    .markdown p  { margin-bottom: 0.75rem; }
+    .markdown p:last-child { margin-bottom: 0; }
+    .markdown strong { font-weight: 700; }
+    .markdown em { font-style: italic; }
+    .markdown ul, .markdown ol { padding-left: 1.4rem; margin-bottom: 0.75rem; }
+    .markdown li { margin-bottom: 0.25rem; }
+    .markdown h1, .markdown h2, .markdown h3 { font-weight: 700; margin-bottom: 0.5rem; }
+
+    .profile-rendered { min-height: 2rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Taste Buddy</h1>
+  <nav class="header-nav">
+    <button class="active" onclick="showView('log')">Log</button>
+    <button onclick="showView('add')">+ Add</button>
+    <button onclick="showView('profile')">Profile</button>
+    <button onclick="showView('suggest')">Suggest</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── LOG ── -->
+  <div id="view-log" class="view active">
+    <div class="type-tabs">
+      <button class="tab active" data-type="all"    onclick="setTab('all')">All</button>
+      <button class="tab"        data-type="movie"  onclick="setTab('movie')">Movies</button>
+      <button class="tab"        data-type="series" onclick="setTab('series')">Series</button>
+      <button class="tab"        data-type="book"   onclick="setTab('book')">Books</button>
+      <button class="tab"        data-type="comic"  onclick="setTab('comic')">Comics</button>
+    </div>
+    <div id="year-pills" class="year-pills"></div>
+    <div class="toolbar">
+      <input id="search" type="text" placeholder="Search titles and reviews…" oninput="renderLog()">
+    </div>
+    <div id="entry-list"></div>
+  </div>
+
+  <!-- ── ADD / EDIT ── -->
+  <div id="view-add" class="view">
+    <div class="form-card">
+      <h2 id="form-title">Add entry</h2>
+      <input type="hidden" id="edit-id">
+      <div class="form-row">
+        <div class="form-group" style="flex:2; min-width:200px;">
+          <label>Title</label>
+          <input id="f-title" type="text" placeholder="e.g. Challengers">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="f-type">
+            <option value="movie">Movie</option>
+            <option value="series">Series</option>
+            <option value="book">Book</option>
+            <option value="comic">Comic</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:120px;">
+          <label>Year</label>
+          <input id="f-date" type="text" placeholder="2025" maxlength="4">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Review</label>
+        <textarea id="f-review" placeholder="Your thoughts… any language, any tone"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveEntry()">Save</button>
+        <button class="btn" onclick="resetForm(); showView('log')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE ── -->
+  <div id="view-profile" class="view">
+    <div class="profile-header">
+      <div>
+        <h2>Your Taste Profile</h2>
+        <div class="profile-meta" id="profile-updated"></div>
+      </div>
+    </div>
+    <div class="profile-card">
+      <div id="profile-rendered" class="markdown profile-rendered"></div>
+      <textarea id="profile-text" style="display:none;" placeholder="No profile yet."></textarea>
+    </div>
+    <div class="profile-actions">
+      <button class="btn btn-primary" id="btn-refresh" onclick="refreshProfile()">Refresh from log</button>
+      <button class="btn" id="btn-edit-profile" onclick="toggleProfileEdit()">Edit</button>
+      <button class="btn btn-primary" id="btn-save-profile" style="display:none;" onclick="saveProfile()">Save</button>
+      <span id="profile-status" style="font-size:0.78rem; color:var(--muted);"></span>
+    </div>
+  </div>
+
+  <!-- ── SUGGEST ── -->
+  <div id="view-suggest" class="view">
+    <div class="suggest-card">
+      <p>What are you in the mood for?</p>
+      <div style="display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap;">
+        <button class="btn suggest-type-btn" data-type="movie"  onclick="getSuggestion('movie')">Movie</button>
+        <button class="btn suggest-type-btn" data-type="series" onclick="getSuggestion('series')">Series</button>
+        <button class="btn suggest-type-btn" data-type="book"   onclick="getSuggestion('book')">Book</button>
+        <button class="btn suggest-type-btn" data-type="comic"  onclick="getSuggestion('comic')">Comic</button>
+      </div>
+    </div>
+    <div class="debug-bar">
+      <button class="btn-debug" id="btn-debug" onclick="toggleDebug()">⚙ debug</button>
+    </div>
+    <div id="suggest-output"></div>
+  </div>
+
+</main>
+
+<script>
+  let allEntries = [];
+  let activeTab  = 'all';
+  let activeYear = 'all';
+
+  const TYPE_ORDER = ['movie', 'series', 'book', 'comic'];
+  const TYPE_LABEL = { movie: 'Movies', series: 'Series', book: 'Books', comic: 'Comics' };
+  const VIEWS      = ['log', 'add', 'profile', 'suggest'];
+
+  // ── View routing ──
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.header-nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.header-nav button')[VIEWS.indexOf(name)].classList.add('active');
+    if (name === 'log')     loadEntries();
+    if (name === 'profile') loadProfile();
+  }
+
+  // ── Tab ──
+  function setTab(type) {
+    activeTab = type;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[data-type="${type}"]`).classList.add('active');
+    renderLog();
+  }
+
+  // ── Year filter ──
+  function setYear(year) {
+    activeYear = year;
+    document.querySelectorAll('.year-pill').forEach(p => p.classList.remove('active'));
+    document.querySelector(`.year-pill[data-year="${year}"]`).classList.add('active');
+    renderLog();
+  }
+
+  function buildYearPills() {
+    const years = [...new Set(allEntries.map(e => e.date).filter(Boolean))]
+      .sort((a, b) => b - a);
+    const container = document.getElementById('year-pills');
+    if (years.length <= 1) { container.innerHTML = ''; return; }
+    const pills = ['all', ...years].map(y => `
+      <button class="year-pill ${y === activeYear ? 'active' : ''}"
+              data-year="${y}" onclick="setYear('${y}')">
+        ${y === 'all' ? 'All years' : y}
+      </button>`).join('');
+    container.innerHTML = pills;
+  }
+
+  // ── Entries ──
+  async function loadEntries() {
+    const res  = await fetch('/entries');
+    allEntries = await res.json();
+    buildYearPills();
+    renderLog();
+  }
+
+  function renderLog() {
+    const search = document.getElementById('search').value.toLowerCase();
+
+    const filtered = allEntries.filter(e => {
+      if (activeTab !== 'all' && e.type !== activeTab) return false;
+      if (activeYear !== 'all' && e.date !== activeYear) return false;
+      if (search) {
+        const hit = e.title.toLowerCase().includes(search)
+                 || (e.review || '').toLowerCase().includes(search);
+        if (!hit) return false;
+      }
+      return true;
+    });
+
+    const list = document.getElementById('entry-list');
+
+    if (!filtered.length) {
+      list.innerHTML = '<div class="empty">Nothing here yet.</div>';
+      return;
+    }
+
+    const typesToShow = activeTab === 'all' ? TYPE_ORDER : [activeTab];
+    let html = '';
+
+    typesToShow.forEach(type => {
+      const group = filtered.filter(e => e.type === type);
+      if (!group.length) return;
+
+      if (activeTab === 'all') {
+        html += `
+          <div class="type-section">
+            <div class="section-header" data-type="${type}">
+              <h2>${TYPE_LABEL[type]}</h2>
+              <span class="section-count">${group.length}</span>
+            </div>
+            <div class="entry-list">${group.map(e => cardHtml(e, search)).join('')}</div>
+          </div>`;
+      } else {
+        html += `<div class="entry-list">${group.map(e => cardHtml(e, search)).join('')}</div>`;
+      }
+    });
+
+    list.innerHTML = html;
+  }
+
+  function cardHtml(e, search) {
+    const title  = search ? highlight(esc(e.title),  search) : esc(e.title);
+    const review = e.review
+      ? (search ? highlight(esc(e.review), search) : esc(e.review))
+      : '';
+    return `
+      <div class="entry-card" data-type="${e.type}">
+        <div class="entry-top">
+          <span class="entry-title">${title}</span>
+          ${e.date ? `<span class="entry-year">${e.date}</span>` : ''}
+        </div>
+        ${review ? `<div class="entry-review">${review}</div>` : ''}
+        <div class="entry-actions">
+          <button class="btn" onclick="editEntry(${e.id})">Edit</button>
+          <button class="btn btn-danger" onclick="deleteEntry(${e.id})">Delete</button>
+        </div>
+      </div>`;
+  }
+
+  // ── Form ──
+  function resetForm() {
+    document.getElementById('edit-id').value = '';
+    document.getElementById('form-title').textContent = 'Add entry';
+    document.getElementById('f-title').value  = '';
+    document.getElementById('f-type').value   = 'movie';
+    document.getElementById('f-date').value   = String(new Date().getFullYear());
+    document.getElementById('f-review').value = '';
+  }
+
+  function editEntry(id) {
+    const e = allEntries.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('edit-id').value   = e.id;
+    document.getElementById('form-title').textContent = 'Edit entry';
+    document.getElementById('f-title').value   = e.title;
+    document.getElementById('f-type').value    = e.type;
+    document.getElementById('f-date').value    = e.date || '';
+    document.getElementById('f-review').value  = e.review || '';
+    showView('add');
+  }
+
+  async function saveEntry() {
+    const id = document.getElementById('edit-id').value;
+    const payload = {
+      title:  document.getElementById('f-title').value.trim(),
+      type:   document.getElementById('f-type').value,
+      date:   document.getElementById('f-date').value.trim() || null,
+      review: document.getElementById('f-review').value.trim() || null,
+    };
+    if (!payload.title) { alert('Title is required'); return; }
+    const url    = id ? `/entries/${id}` : '/entries';
+    const method = id ? 'PUT' : 'POST';
+    await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    resetForm();
+    showView('log');
+  }
+
+  async function deleteEntry(id) {
+    if (!confirm('Delete this entry?')) return;
+    await fetch(`/entries/${id}`, { method: 'DELETE' });
+    await loadEntries();
+  }
+
+  // ── Profile ──
+  function renderProfile(content) {
+    const rendered = document.getElementById('profile-rendered');
+    if (content) {
+      rendered.innerHTML = marked.parse(content);
+    } else {
+      rendered.innerHTML = '<span style="color:var(--muted);font-style:italic;">No profile yet. Hit "Refresh from log" to generate one.</span>';
+    }
+  }
+
+  async function loadProfile() {
+    const data = await fetch('/profile').then(r => r.json());
+    document.getElementById('profile-text').value = data.content || '';
+    document.getElementById('profile-updated').textContent = data.updated_at
+      ? `Last updated ${data.updated_at}` : '';
+    renderProfile(data.content);
+  }
+
+  function toggleProfileEdit() {
+    const textarea = document.getElementById('profile-text');
+    const rendered = document.getElementById('profile-rendered');
+    const btnEdit  = document.getElementById('btn-edit-profile');
+    const btnSave  = document.getElementById('btn-save-profile');
+    const editing  = textarea.style.display !== 'none';
+    if (editing) {
+      // Cancel — restore rendered view
+      renderProfile(textarea.value);
+      textarea.style.display  = 'none';
+      rendered.style.display  = '';
+      btnEdit.textContent     = 'Edit';
+      btnSave.style.display   = 'none';
+    } else {
+      textarea.style.display  = '';
+      rendered.style.display  = 'none';
+      textarea.style.minHeight = '260px';
+      btnEdit.textContent     = 'Cancel';
+      btnSave.style.display   = '';
+    }
+  }
+
+  async function saveProfile() {
+    const content = document.getElementById('profile-text').value.trim();
+    const status  = document.getElementById('profile-status');
+    status.textContent = 'Saving…';
+    const data = await fetch('/profile', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ content }),
+    }).then(r => r.json());
+    document.getElementById('profile-updated').textContent = `Last updated ${data.updated_at}`;
+    renderProfile(content);
+    // Close edit mode
+    document.getElementById('profile-text').style.display  = 'none';
+    document.getElementById('profile-rendered').style.display = '';
+    document.getElementById('btn-edit-profile').textContent   = 'Edit';
+    document.getElementById('btn-save-profile').style.display = 'none';
+    status.textContent = 'Saved.';
+    setTimeout(() => status.textContent = '', 2000);
+  }
+
+  async function refreshProfile() {
+    const btn    = document.getElementById('btn-refresh');
+    const status = document.getElementById('profile-status');
+    btn.disabled = true;
+    btn.textContent = 'Generating…';
+    status.textContent = '';
+    try {
+      const data = await fetch('/profile/refresh', { method: 'POST' }).then(r => r.json());
+      document.getElementById('profile-text').value = data.content || '';
+      document.getElementById('profile-updated').textContent = `Last updated ${data.updated_at}`;
+      renderProfile(data.content);
+      // Ensure we're in read mode
+      document.getElementById('profile-text').style.display     = 'none';
+      document.getElementById('profile-rendered').style.display = '';
+      document.getElementById('btn-edit-profile').textContent   = 'Edit';
+      document.getElementById('btn-save-profile').style.display = 'none';
+      status.textContent = 'Done.';
+      setTimeout(() => status.textContent = '', 2000);
+    } catch (e) {
+      status.textContent = 'Error: ' + e.message;
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Refresh from log';
+    }
+  }
+
+  // ── Suggestions ──
+  const TYPE_ICON = { movie: '🎬', series: '📺', book: '📖', comic: '💬' };
+  let lastDebug = null;  // { prompt, response }
+  let debugVisible = false;
+
+  function toggleDebug() {
+    debugVisible = !debugVisible;
+    document.getElementById('btn-debug').classList.toggle('active', debugVisible);
+    renderDebugPanel();
+  }
+
+  function renderDebugPanel() {
+    const existing = document.getElementById('debug-panel');
+    if (existing) existing.remove();
+    if (!debugVisible || !lastDebug) return;
+    const panel = document.createElement('div');
+    panel.id = 'debug-panel';
+    panel.innerHTML = `
+      <div class="debug-prompt"><strong style="color:#9cdcfe;">── PROMPT ──</strong>\n${esc(lastDebug.prompt)}\n\n<strong style="color:#9cdcfe;">── RAW RESPONSE ──</strong>\n${esc(lastDebug.response)}</div>`;
+    document.getElementById('suggest-output').before(panel);
+  }
+
+  async function getSuggestion(type) {
+    const out  = document.getElementById('suggest-output');
+    const btns = document.querySelectorAll('.suggest-type-btn');
+    btns.forEach(b => b.disabled = true);
+    out.innerHTML = '<div class="suggest-output" style="color:var(--muted);font-style:italic;">Thinking…</div>';
+    try {
+      const res  = await fetch('/suggest', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ type }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Error');
+
+      lastDebug = { prompt: data.debug_prompt, response: data.debug_response };
+      if (debugVisible) renderDebugPanel();
+
+      // Build the suggestion text without the first **Title** (year) headline
+      const bodyText = data.suggestion.replace(/^\*\*.+?\*\*\s*\(\d{4}\)\s*\n?/, '').trim();
+
+      // Thumbnail
+      const thumbHtml = data.image_url
+        ? `<img src="${esc(data.image_url)}" alt="${esc(data.title)}"
+               onerror="this.parentElement.innerHTML='<div class=result-thumb-placeholder>${TYPE_ICON[type] || '?'}</div>'">`
+        : `<div class="result-thumb-placeholder">${TYPE_ICON[type] || '?'}</div>`;
+
+      // Links
+      const linksHtml = (data.links || []).map(l => {
+        const cls = l.label === 'IMDb' ? 'imdb' : l.label === 'JustWatch' ? 'justwatch' : 'amazon';
+        return `<a class="result-link ${cls}" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`;
+      }).join('');
+
+      out.innerHTML = `
+        <div class="result-card">
+          <div class="result-thumb-wrap">${thumbHtml}</div>
+          <div class="result-body">
+            <div class="result-header">
+              <span class="result-title">${esc(data.title)}</span>
+              ${data.year ? `<span class="result-year">(${esc(data.year)})</span>` : ''}
+            </div>
+            <div class="result-text markdown">${marked.parse(bodyText)}</div>
+            ${linksHtml ? `<div class="result-links">${linksHtml}</div>` : ''}
+          </div>
+        </div>`;
+    } catch (err) {
+      out.innerHTML = `<div class="suggest-output error">${esc(err.message)}</div>`;
+    } finally {
+      btns.forEach(b => b.disabled = false);
+    }
+  }
+
+  // ── Helpers ──
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function highlight(html, term) {
+    if (!term) return html;
+    const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return html.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
+  }
+
+  // ── Init ──
+  resetForm();
+  loadEntries();
+</script>
+</body>
+</html>
