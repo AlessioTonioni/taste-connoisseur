@@ -1,4 +1,11 @@
 {
   "anthropic_model": "claude-opus-4-6",
-  "gemini_model": "gemini-3-flash-preview"
+  "gemini_model": "gemini-3-flash-preview",
+  "streaming_country": "Switzerland",
+  "streaming_services": [
+    "Amazon Prime Video",
+    "Play Suisse",
+    "RTS Play",
+    "Arte"
+  ]
 }

@@ -511,6 +511,7 @@
     <button onclick="showView('add')">+ Add</button>
     <button onclick="showView('profile')">Profile</button>
     <button onclick="showView('suggest')">Suggest</button>
+    <button onclick="showView('settings')">Settings</button>
   </nav>
 </header>
 
@@ -592,16 +593,41 @@
     <div class="suggest-card">
       <p>What are you in the mood for?</p>
       <div style="display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap;">
-        <button class="btn suggest-type-btn" data-type="movie"  onclick="getSuggestion('movie')">Movie</button>
-        <button class="btn suggest-type-btn" data-type="series" onclick="getSuggestion('series')">Series</button>
-        <button class="btn suggest-type-btn" data-type="book"   onclick="getSuggestion('book')">Book</button>
-        <button class="btn suggest-type-btn" data-type="comic"  onclick="getSuggestion('comic')">Comic</button>
+        <button class="btn suggest-type-btn" data-type="movie"  onclick="getSuggestion('movie')"  onmouseenter="setStreamingRowVisible(true)"  onmouseleave="setStreamingRowVisible(null)">Movie</button>
+        <button class="btn suggest-type-btn" data-type="series" onclick="getSuggestion('series')" onmouseenter="setStreamingRowVisible(true)"  onmouseleave="setStreamingRowVisible(null)">Series</button>
+        <button class="btn suggest-type-btn" data-type="book"   onclick="getSuggestion('book')"   onmouseenter="setStreamingRowVisible(false)" onmouseleave="setStreamingRowVisible(null)">Book</button>
+        <button class="btn suggest-type-btn" data-type="comic"  onclick="getSuggestion('comic')"  onmouseenter="setStreamingRowVisible(false)" onmouseleave="setStreamingRowVisible(null)">Comic</button>
+      </div>
+      <div id="streaming-bias-row" style="margin-top:1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+        <input type="checkbox" id="streaming-bias" style="cursor:pointer; width:14px; height:14px;">
+        <label for="streaming-bias" id="streaming-bias-label" style="font-size:0.82rem; color:var(--muted); cursor:pointer;">
+          Available on my streaming services
+        </label>
       </div>
     </div>
     <div class="debug-bar">
       <button class="btn-debug" id="btn-debug" onclick="toggleDebug()">⚙ debug</button>
     </div>
     <div id="suggest-output"></div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div id="view-settings" class="view">
+    <div class="form-card">
+      <h2>Streaming Settings</h2>
+      <div class="form-group">
+        <label>Country</label>
+        <input id="s-country" type="text" placeholder="e.g. Switzerland">
+      </div>
+      <div class="form-group">
+        <label>Streaming services (one per line)</label>
+        <textarea id="s-services" placeholder="Netflix&#10;Disney+&#10;Apple TV+" style="min-height:130px;"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveStreamingConfig()">Save</button>
+        <span id="settings-status" style="font-size:0.78rem; color:var(--muted);"></span>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -613,7 +639,7 @@
 
   const TYPE_ORDER = ['movie', 'series', 'book', 'comic'];
   const TYPE_LABEL = { movie: 'Movies', series: 'Series', book: 'Books', comic: 'Comics' };
-  const VIEWS      = ['log', 'add', 'profile', 'suggest'];
+  const VIEWS      = ['log', 'add', 'profile', 'suggest', 'settings'];
 
   // ── View routing ──
   function showView(name) {
@@ -621,8 +647,9 @@
     document.querySelectorAll('.header-nav button').forEach(b => b.classList.remove('active'));
     document.getElementById('view-' + name).classList.add('active');
     document.querySelectorAll('.header-nav button')[VIEWS.indexOf(name)].classList.add('active');
-    if (name === 'log')     loadEntries();
-    if (name === 'profile') loadProfile();
+    if (name === 'log')      loadEntries();
+    if (name === 'profile')  loadProfile();
+    if (name === 'settings') loadStreamingConfig();
   }
 
   // ── Tab ──
@@ -884,10 +911,12 @@
     btns.forEach(b => b.disabled = true);
     out.innerHTML = '<div class="suggest-output" style="color:var(--muted);font-style:italic;">Thinking…</div>';
     try {
+      const supportsStreaming = (type === 'movie' || type === 'series');
+      const streamingBias = supportsStreaming && document.getElementById('streaming-bias').checked;
       const res  = await fetch('/suggest', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, streaming_bias: streamingBias }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Error');
@@ -929,6 +958,49 @@
     }
   }
 
+  // ── Streaming config ──
+  let streamingServices = [];
+
+  async function loadStreamingConfig() {
+    const data = await fetch('/config/streaming').then(r => r.json());
+    streamingServices = data.streaming_services || [];
+    document.getElementById('s-country').value  = data.streaming_country || 'Switzerland';
+    document.getElementById('s-services').value = streamingServices.join('\n');
+    updateStreamingLabel();
+  }
+
+  // null = reset to default (applies), true = applies, false = greyed out (n/a)
+  function setStreamingRowVisible(applies) {
+    const row = document.getElementById('streaming-bias-row');
+    row.style.opacity = (applies === false) ? '0.35' : '1';
+  }
+
+  function updateStreamingLabel() {
+    const label = document.getElementById('streaming-bias-label');
+    if (streamingServices.length) {
+      label.textContent = `Available on my streaming services (${streamingServices.join(', ')})`;
+    } else {
+      label.textContent = 'Available on my streaming services (configure in Settings)';
+    }
+  }
+
+  async function saveStreamingConfig() {
+    const country  = document.getElementById('s-country').value.trim() || 'Switzerland';
+    const services = document.getElementById('s-services').value
+      .split('\n').map(s => s.trim()).filter(Boolean);
+    const status   = document.getElementById('settings-status');
+    status.textContent = 'Saving…';
+    const data = await fetch('/config/streaming', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ streaming_country: country, streaming_services: services }),
+    }).then(r => r.json());
+    streamingServices = data.streaming_services;
+    updateStreamingLabel();
+    status.textContent = 'Saved.';
+    setTimeout(() => status.textContent = '', 2000);
+  }
+
   // ── Helpers ──
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -943,6 +1015,7 @@
   // ── Init ──
   resetForm();
   loadEntries();
+  loadStreamingConfig();
 </script>
 </body>
 </html>

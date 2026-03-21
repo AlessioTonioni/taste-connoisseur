@@ -167,10 +167,56 @@ def _build_links(title: str, media_type: str) -> list[dict]:
         ]
 
 
+# ── Streaming config ──
+
+_CONFIG_PATH = Path(__file__).parent / "config.json"
+
+
+def _read_config() -> dict:
+    try:
+        return json.loads(_CONFIG_PATH.read_text())
+    except Exception:
+        return {}
+
+
+def _write_config(updates: dict) -> dict:
+    cfg = _read_config()
+    cfg.update(updates)
+    _CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
+    return cfg
+
+
+class StreamingConfig(BaseModel):
+    streaming_country:  str
+    streaming_services: list[str]
+
+
+@app.get("/config/streaming")
+def get_streaming_config():
+    cfg = _read_config()
+    return {
+        "streaming_country":  cfg.get("streaming_country", "Switzerland"),
+        "streaming_services": cfg.get("streaming_services", []),
+    }
+
+
+@app.put("/config/streaming")
+def save_streaming_config(body: StreamingConfig):
+    cfg = _write_config({
+        "streaming_country":  body.streaming_country,
+        "streaming_services": body.streaming_services,
+    })
+    return {
+        "streaming_country":  cfg["streaming_country"],
+        "streaming_services": cfg["streaming_services"],
+    }
+
+
 # ── Suggestions ──
 
 class SuggestRequest(BaseModel):
-    type: str
+    type:           str
+    streaming_bias: bool = False
 
 
 @app.post("/suggest")
@@ -197,6 +243,20 @@ def suggest(body: SuggestRequest):
         for e in entries
     )
 
+    streaming_block = ""
+    if body.streaming_bias and body.type in ("movie", "series"):
+        cfg = _read_config()
+        services = cfg.get("streaming_services", [])
+        country  = cfg.get("streaming_country", "Switzerland")
+        if services:
+            svc_list = ", ".join(services)
+            streaming_block = (
+                f"- Strongly prefer titles currently available to stream in {country} "
+                f"on one of these services: {svc_list}. "
+                f"Use web search to verify availability if needed. "
+                f"If no great match is streamable there, you may suggest it anyway but note that.\n"
+            )
+
     prompt = f"""You are a personal taste advisor. Today is {today}.
 
 Below is a person's {body.type} journal with reviews in Italian, English, or a mix — informal and humorous tone. Understand the sentiment regardless of language.
@@ -209,7 +269,7 @@ Rules:
 - Absolutely no spoilers — do not reveal plot twists, endings, or major developments.
 - Prefer recent or currently relevant titles where appropriate (today is {today}).
 - Do not repeat anything already in their journal.
-- Respond in English.
+{streaming_block}- Respond in English.
 
 Format your response as:
 **Title** (year)
