@@ -940,21 +940,18 @@
       // Build the suggestion text without the first **Title** (year) headline
       const bodyText = data.suggestion.replace(/^\*\*.+?\*\*\s*\(\d{4}\)\s*\n?/, '').trim();
 
-      // Thumbnail
-      const thumbHtml = data.image_url
-        ? `<img src="${esc(data.image_url)}" alt="${esc(data.title)}"
-               onerror="this.parentElement.innerHTML='<div class=result-thumb-placeholder>${TYPE_ICON[type] || '?'}</div>'">`
-        : `<div class="result-thumb-placeholder">${TYPE_ICON[type] || '?'}</div>`;
-
       // Links
       const linksHtml = (data.links || []).map(l => {
         const cls = l.label === 'IMDb' ? 'imdb' : l.label === 'JustWatch' ? 'justwatch' : 'amazon';
         return `<a class="result-link ${cls}" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`;
       }).join('');
 
+      // Show result card with a loading placeholder for the image
       out.innerHTML = `
         <div class="result-card">
-          <div class="result-thumb-wrap">${thumbHtml}</div>
+          <div class="result-thumb-wrap" id="result-thumb-container">
+            <div class="result-thumb-placeholder"><span class="spinner">⌛</span></div>
+          </div>
           <div class="result-body">
             <div class="result-header">
               <span class="result-title">${esc(data.title)}</span>
@@ -964,6 +961,23 @@
             ${linksHtml ? `<div class="result-links">${linksHtml}</div>` : ''}
           </div>
         </div>`;
+
+      // Fetch image asynchronously
+      fetch(`/suggest/image?title=${encodeURIComponent(data.title)}&type=${encodeURIComponent(type)}`)
+        .then(r => r.json())
+        .then(imgData => {
+          const container = document.getElementById('result-thumb-container');
+          if (imgData.image_url) {
+            container.innerHTML = `<img src="${esc(imgData.image_url)}" alt="${esc(data.title)}" 
+                                     onerror="this.parentElement.innerHTML='<div class=result-thumb-placeholder>${TYPE_ICON[type] || '?'}</div>'">`;
+          } else {
+            container.innerHTML = `<div class="result-thumb-placeholder">${TYPE_ICON[type] || '?'}</div>`;
+          }
+        })
+        .catch(() => {
+          const container = document.getElementById('result-thumb-container');
+          if (container) container.innerHTML = `<div class="result-thumb-placeholder">${TYPE_ICON[type] || '?'}</div>`;
+        });
     } catch (err) {
       out.innerHTML = `<div class="suggest-output error">${esc(err.message)}</div>`;
     } finally {

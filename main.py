@@ -1,9 +1,12 @@
 import json
 import re
+import ssl
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Optional
+
+_SSL_CONTEXT = ssl._create_unverified_context()
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -142,16 +145,84 @@ def _parse_title_year(suggestion: str) -> tuple[str, Optional[str]]:
     return suggestion.split('\n')[0].strip('* '), None
 
 
-def _wikipedia_thumbnail(title: str) -> Optional[str]:
+def _openlibrary_thumbnail(title: str) -> Optional[str]:
     try:
-        encoded = urllib.parse.quote(title.replace(' ', '_'))
-        url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded}"
+        q = urllib.parse.quote(title)
+        url = f"https://openlibrary.org/search.json?title={q}&limit=1"
         req = urllib.request.Request(url, headers={"User-Agent": "TasteBuddy/1.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
+        if data.get("docs"):
+            cover_i = data["docs"][0].get("cover_i")
+            if cover_i:
+                return f"https://covers.openlibrary.org/b/id/{cover_i}-L.jpg"
+    except Exception:
+        pass
+    return None
+
+
+def _google_books_thumbnail(title: str) -> Optional[str]:
+    try:
+        q = urllib.parse.quote(title)
+        url = f"https://www.googleapis.com/books/v1/volumes?q=intitle:{q}&maxResults=1"
+        with urllib.request.urlopen(url, timeout=5, context=_SSL_CONTEXT) as resp:
+            data = json.loads(resp.read())
+        items = data.get("items", [])
+        if items:
+            images = items[0].get("volumeInfo", {}).get("imageLinks", {})
+            return images.get("thumbnail") or images.get("smallThumbnail")
+    except Exception:
+        pass
+    return None
+
+
+def _tvmaze_thumbnail(title: str) -> Optional[str]:
+    try:
+        q = urllib.parse.quote(title)
+        url = f"https://api.tvmaze.com/singlesearch/shows?q={q}"
+        req = urllib.request.Request(url, headers={"User-Agent": "TasteBuddy/1.0"})
+        with urllib.request.urlopen(req, timeout=5, context=_SSL_CONTEXT) as resp:
+            data = json.loads(resp.read())
+        return data.get("image", {}).get("medium") or data.get("image", {}).get("original")
+    except Exception:
+        pass
+    return None
+
+
+def _wikipedia_search_thumbnail(title: str) -> Optional[str]:
+    try:
+        # 1. Search for the most relevant page
+        q = urllib.parse.quote(title)
+        search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={q}&format=json&srlimit=1"
+        req = urllib.request.Request(search_url, headers={"User-Agent": "TasteBuddy/1.0"})
+        with urllib.request.urlopen(req, timeout=5, context=_SSL_CONTEXT) as resp:
+            search_data = json.loads(resp.read())
+
+        if not search_data.get("query", {}).get("search"):
+            return None
+
+        page_title = search_data["query"]["search"][0]["title"]
+
+        # 2. Use the summary API (rest_v1) which is more robust for lead images
+        encoded_title = urllib.parse.quote(page_title.replace(' ', '_'))
+        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{encoded_title}"
+        req = urllib.request.Request(summary_url, headers={"User-Agent": "TasteBuddy/1.0"})
+        with urllib.request.urlopen(req, timeout=5, context=_SSL_CONTEXT) as resp:
+            data = json.loads(resp.read())
+
         return data.get("thumbnail", {}).get("source")
     except Exception:
-        return None
+        pass
+    return None
+
+
+def _find_image(title: str, media_type: str) -> Optional[str]:
+    if media_type == "book" or media_type == "comic":
+        return _google_books_thumbnail(title) or _openlibrary_thumbnail(title) or _wikipedia_search_thumbnail(title)
+    elif media_type == "series":
+        return _tvmaze_thumbnail(title) or _wikipedia_search_thumbnail(title)
+    else: # movie
+        return _wikipedia_search_thumbnail(title)
 
 
 def _build_links(title: str, media_type: str) -> list[dict]:
@@ -299,13 +370,19 @@ Last 5 {body.type} journal entries:
         "suggestion":    suggestion,
         "title":         title,
         "year":          year,
-        "image_url":     _wikipedia_thumbnail(title),
         "links":         _build_links(title, body.type),
         "debug_prompt":  prompt,
         "debug_response": suggestion,
     }
 
 
+@app.get("/suggest/image")
+def suggest_image(title: str, type: str):
+    return {"image_url": _find_image(title, type)}
+
+
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
