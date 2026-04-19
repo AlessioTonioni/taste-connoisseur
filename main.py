@@ -289,6 +289,7 @@ class SuggestRequest(BaseModel):
     type:           str
     streaming_bias: bool = False
     comfort_level:  int = 3
+    use_search:     bool = True
 
 
 @app.post("/suggest")
@@ -364,7 +365,7 @@ Format your response as:
 Last 5 {body.type} journal entries:
 {history}"""
 
-    suggestion = llm.complete(prompt)
+    suggestion = llm.complete(prompt, use_search=body.use_search)
     title, year = _parse_title_year(suggestion)
     return {
         "suggestion":    suggestion,

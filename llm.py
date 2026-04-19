@@ -26,14 +26,14 @@ def _cfg(key: str) -> str:
         return _DEFAULTS[key]
 
 
-def complete(prompt: str) -> str:
+def complete(prompt: str, use_search: bool = True) -> str:
     provider = _resolve_provider()
 
     try:
         if provider == "anthropic":
-            return _anthropic(prompt)
+            return _anthropic(prompt, use_search)
         else:
-            return _gemini(prompt)
+            return _gemini(prompt, use_search)
     except HTTPException:
         raise
     except Exception as exc:
@@ -56,16 +56,19 @@ def _resolve_provider() -> str:
     )
 
 
-def _anthropic(prompt: str) -> str:
+def _anthropic(prompt: str, use_search: bool) -> str:
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         raise HTTPException(500, "ANTHROPIC_API_KEY is not set.")
     import anthropic
     client  = anthropic.Anthropic(api_key=key)
+    
+    tools = [{"type": "web_search_20250305", "name": "web_search"}] if use_search else []
+    
     message = client.messages.create(
         model=_cfg("anthropic_model"),
         max_tokens=1024,
-        tools=[{"type": "web_search_20250305", "name": "web_search"}],
+        tools=tools if tools else anthropic.NOT_GIVEN,
         messages=[{"role": "user", "content": prompt}],
     )
     # Collect all text blocks (web search may add non-text blocks)
@@ -74,18 +77,23 @@ def _anthropic(prompt: str) -> str:
     )
 
 
-def _gemini(prompt: str) -> str:
+def _gemini(prompt: str, use_search: bool) -> str:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise HTTPException(500, "GEMINI_API_KEY is not set.")
     from google import genai
     from google.genai import types
     client   = genai.Client(api_key=key)
+    
+    config = None
+    if use_search:
+        config = types.GenerateContentConfig(
+            tools=[types.Tool(google_search=types.GoogleSearch())],
+        )
+
     response = client.models.generate_content(
         model=_cfg("gemini_model"),
         contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=[types.Tool(google_search=types.GoogleSearch())],
-        ),
+        config=config,
     )
     return response.text

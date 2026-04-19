@@ -610,11 +610,19 @@
         </div>
       </div>
 
-      <div id="streaming-bias-row" style="margin-top:1.5rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-        <input type="checkbox" id="streaming-bias" style="cursor:pointer; width:14px; height:14px;">
-        <label for="streaming-bias" id="streaming-bias-label" style="font-size:0.82rem; color:var(--muted); cursor:pointer;">
-          Available on my streaming services
-        </label>
+      <div style="margin-top:1.5rem; display:flex; align-items:center; justify-content:center; gap:1.2rem; flex-wrap:wrap;">
+        <div id="streaming-bias-row" style="display:flex; align-items:center; gap:0.5rem;">
+          <input type="checkbox" id="streaming-bias" style="cursor:pointer; width:14px; height:14px;">
+          <label for="streaming-bias" id="streaming-bias-label" style="font-size:0.82rem; color:var(--muted); cursor:pointer;">
+            Available on my streaming services
+          </label>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <input type="checkbox" id="use-search" checked style="cursor:pointer; width:14px; height:14px;">
+          <label for="use-search" style="font-size:0.82rem; color:var(--muted); cursor:pointer;">
+            Research Mode (Web Search)
+          </label>
+        </div>
       </div>
     </div>
     <div class="debug-bar">
@@ -925,11 +933,12 @@
     try {
       const supportsStreaming = (type === 'movie' || type === 'series');
       const streamingBias = supportsStreaming && document.getElementById('streaming-bias').checked;
-      const comfortLevel = parseInt(document.getElementById('comfort-slider').value);
+      const useSearch     = document.getElementById('use-search').checked;
+      const comfortLevel  = parseInt(document.getElementById('comfort-slider').value);
       const res  = await fetch('/suggest', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ type, streaming_bias: streamingBias, comfort_level: comfortLevel }),
+        body: JSON.stringify({ type, streaming_bias: streamingBias, use_search: useSearch, comfort_level: comfortLevel }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Error');
