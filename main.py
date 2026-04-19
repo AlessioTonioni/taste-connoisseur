@@ -217,6 +217,7 @@ def save_streaming_config(body: StreamingConfig):
 class SuggestRequest(BaseModel):
     type:           str
     streaming_bias: bool = False
+    comfort_level:  int = 3
 
 
 @app.post("/suggest")
@@ -224,8 +225,8 @@ def suggest(body: SuggestRequest):
     if body.type not in db.VALID_TYPES:
         raise HTTPException(400, f"type must be one of {db.VALID_TYPES}")
 
-    # Only send the relevant media type entries to the model
-    entries = db.get_all_with_reviews(type_filter=body.type)
+    # Only send the relevant media type entries to the model (last 5)
+    entries = db.get_all_with_reviews(type_filter=body.type)[:5]
     if not entries:
         raise HTTPException(400, f"No reviewed {body.type} entries yet — add some first!")
 
@@ -257,15 +258,29 @@ def suggest(body: SuggestRequest):
                 f"If no great match is streamable there, you may suggest it anyway but note that.\n"
             )
 
+    comfort_map = {
+        1: "Strictly within their comfort zone. Suggest something that perfectly matches their established tastes and patterns. A very safe bet.",
+        2: "Mostly within their comfort zone. Suggest something that matches their taste well but might have one or two fresh elements.",
+        3: "A balanced recommendation. Suggest something that aligns with their profile but introduces some new themes or styles.",
+        4: "Experimental. Lean outside their usual preferences. Suggest something that might be a bit of a stretch but has a clear hook based on their interests.",
+        5: "Completely outside their comfort zone. Be bold and suggest something drastically different from their usual log, but that you think they will appreciate for a specific reason you must explain.",
+    }
+    comfort_instruction = comfort_map.get(body.comfort_level, comfort_map[3])
+
     prompt = f"""You are a personal taste advisor. Today is {today}.
 
-Below is a person's {body.type} journal with reviews in Italian, English, or a mix — informal and humorous tone. Understand the sentiment regardless of language.
+Below is a person's taste profile and the last 5 entries from their {body.type} journal.
+Reviews are in Italian, English, or a mix — informal and humorous tone. Understand the sentiment regardless of language.
 {profile_block}
+Context for the recommendation:
+{comfort_instruction}
+
 Based on the journal and profile, recommend exactly one {body.type} they should watch or read next.
 
 Rules:
 - One suggestion only — a single title.
-- Write one short paragraph (3-5 sentences max) explaining why it fits their taste.
+- Write one short paragraph (3-5 sentences max) explaining why it fits their taste (or why they should try it if it's out of their comfort zone).
+- In the rationale, explicitly touch upon why this matches the requested 'comfort zone' level (e.g. why it's a safe bet or why it's an interesting risk).
 - Absolutely no spoilers — do not reveal plot twists, endings, or major developments.
 - Prefer recent or currently relevant titles where appropriate (today is {today}).
 - Do not repeat anything already in their journal.
@@ -275,7 +290,7 @@ Format your response as:
 **Title** (year)
 [your paragraph]
 
-{body.type.capitalize()} journal:
+Last 5 {body.type} journal entries:
 {history}"""
 
     suggestion = llm.complete(prompt)

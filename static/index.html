@@ -598,7 +598,19 @@
         <button class="btn suggest-type-btn" data-type="book"   onclick="getSuggestion('book')"   onmouseenter="setStreamingRowVisible(false)" onmouseleave="setStreamingRowVisible(null)">Book</button>
         <button class="btn suggest-type-btn" data-type="comic"  onclick="getSuggestion('comic')"  onmouseenter="setStreamingRowVisible(false)" onmouseleave="setStreamingRowVisible(null)">Comic</button>
       </div>
-      <div id="streaming-bias-row" style="margin-top:1rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+
+      <div style="margin-top: 1.8rem; max-width: 420px; margin-left: auto; margin-right: auto; padding: 0 1rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 0.6rem; letter-spacing: 0.05em;">
+          <span>Comfort Zone</span>
+          <span>Experimental</span>
+        </div>
+        <input type="range" id="comfort-slider" min="1" max="5" step="1" value="3" style="width: 100%; cursor: pointer; accent-color: var(--text);">
+        <div id="comfort-label" style="font-size: 0.8rem; color: var(--muted); margin-top: 0.7rem; font-style: italic; min-height: 1.2em;">
+          Balanced: A mix of familiar and new horizons.
+        </div>
+      </div>
+
+      <div id="streaming-bias-row" style="margin-top:1.5rem; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
         <input type="checkbox" id="streaming-bias" style="cursor:pointer; width:14px; height:14px;">
         <label for="streaming-bias" id="streaming-bias-label" style="font-size:0.82rem; color:var(--muted); cursor:pointer;">
           Available on my streaming services
@@ -913,10 +925,11 @@
     try {
       const supportsStreaming = (type === 'movie' || type === 'series');
       const streamingBias = supportsStreaming && document.getElementById('streaming-bias').checked;
+      const comfortLevel = parseInt(document.getElementById('comfort-slider').value);
       const res  = await fetch('/suggest', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ type, streaming_bias: streamingBias }),
+        body: JSON.stringify({ type, streaming_bias: streamingBias, comfort_level: comfortLevel }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Error');
@@ -1011,6 +1024,19 @@
     const safe = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return html.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
   }
+
+  // ── Comfort slider labels ──
+  const COMFORT_LABELS = {
+    1: "Safe Bet: Perfectly matches your established tastes.",
+    2: "Mostly Safe: Familiar territory with slight variations.",
+    3: "Balanced: A mix of familiar and new horizons.",
+    4: "Experimental: Leaning outside your usual preferences.",
+    5: "Wildcard: Something completely different to surprise you."
+  };
+
+  document.getElementById('comfort-slider').addEventListener('input', (e) => {
+    document.getElementById('comfort-label').textContent = COMFORT_LABELS[e.target.value];
+  });
 
   // ── Init ──
   resetForm();
