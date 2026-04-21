@@ -31,6 +31,13 @@ def init_db():
                 updated_at  TEXT
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS profile_media (
+                type        TEXT PRIMARY KEY,
+                content     TEXT,
+                updated_at  TEXT
+            )
+        """)
         conn.commit()
 
 
@@ -110,3 +117,23 @@ def save_profile(content):
         )
         conn.commit()
     return get_profile()
+
+
+def get_profile_media(type_):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT content, updated_at FROM profile_media WHERE type = ?", (type_,)
+        ).fetchone()
+        return dict(row) if row else {"content": None, "updated_at": None}
+
+
+def save_profile_media(type_, content):
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO profile_media (type, content, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(type) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at",
+            (type_, content, now),
+        )
+        conn.commit()
+    return get_profile_media(type_)

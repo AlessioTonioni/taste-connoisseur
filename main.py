@@ -99,6 +99,28 @@ def save_profile(body: ProfileSave):
     return db.save_profile(body.content)
 
 
+@app.get("/profile/{media_type}")
+def get_media_profile(media_type: str):
+    if media_type not in db.VALID_TYPES:
+        raise HTTPException(400, f"type must be one of {db.VALID_TYPES}")
+    return db.get_profile_media(media_type)
+
+
+@app.put("/profile/{media_type}")
+def save_media_profile(media_type: str, body: ProfileSave):
+    if media_type not in db.VALID_TYPES:
+        raise HTTPException(400, f"type must be one of {db.VALID_TYPES}")
+    return db.save_profile_media(media_type, body.content)
+
+
+_MEDIA_TYPE_LABELS = {
+    "movie":  "movies",
+    "series": "TV series",
+    "book":   "books",
+    "comic":  "comics",
+}
+
+
 @app.post("/profile/refresh")
 def refresh_profile():
     entries = db.get_all_with_reviews()
@@ -110,12 +132,12 @@ def refresh_profile():
         for e in entries
     )
 
-    prompt = f"""You are analyzing a person's media consumption journal to build their taste profile.
+    global_prompt = f"""You are analyzing a person's media consumption journal to build their taste profile.
 Below is their full log of movies, books, series, and comics with personal reviews.
 Reviews are written in Italian, English, or a mix — often informal and humorous. Understand the sentiment regardless of language.
 
 Build a concise taste profile that captures:
-- What genres, themes, and styles they gravitate toward
+- What genres, themes, and styles they gravitate toward across all media
 - What they consistently enjoy vs dislike
 - Any patterns in tone (e.g. prefer slow burns, hate pretentious art-house, love social commentary)
 - Cultural/geographic preferences if visible
@@ -129,8 +151,42 @@ Respond in English.
 Journal:
 {history}"""
 
-    content = llm.complete(prompt)
-    return db.save_profile(content)
+    global_content = llm.complete(global_prompt)
+    global_profile = db.save_profile(global_content)
+
+    media_profiles = {}
+    for media_type in db.VALID_TYPES:
+        type_entries = [e for e in entries if e["type"] == media_type]
+        if not type_entries:
+            media_profiles[media_type] = db.get_profile_media(media_type)
+            continue
+        label = _MEDIA_TYPE_LABELS[media_type]
+        type_history = "\n".join(
+            f"- ({e['date'] or '?'}) {e['title']}: {e['review']}"
+            for e in type_entries
+        )
+        type_prompt = f"""You are analyzing a person's media consumption journal to build their taste profile specifically for {label}.
+Below is their full log of {label} with personal reviews.
+Reviews are written in Italian, English, or a mix — often informal and humorous. Understand the sentiment regardless of language.
+
+Build a concise {label}-specific taste profile that captures:
+- What genres, themes, and styles they gravitate toward in {label}
+- What they consistently enjoy vs dislike in {label}
+- Any patterns in tone, pacing, or style they favor
+- Their critical sensibility for {label} specifically
+
+Write the profile in second person ("You tend to...", "You appreciate...").
+Be specific — reference actual titles or patterns from the log where helpful.
+Keep it to ~200 words, structured in short paragraphs. No bullet points.
+Respond in English.
+
+{label.capitalize()} journal:
+{type_history}"""
+
+        type_content = llm.complete(type_prompt)
+        media_profiles[media_type] = db.save_profile_media(media_type, type_content)
+
+    return {"global": global_profile, "media": media_profiles}
 
 
 # ── Suggestion helpers ──
@@ -305,11 +361,13 @@ def suggest(body: SuggestRequest):
     from datetime import date
     today = date.today().strftime("%B %Y")
 
-    profile = db.get_profile()
-    profile_block = (
-        f"\nUser taste profile:\n{profile['content']}\n"
-        if profile.get("content") else ""
-    )
+    global_profile = db.get_profile()
+    media_profile  = db.get_profile_media(body.type)
+    profile_block  = ""
+    if global_profile.get("content"):
+        profile_block += f"\nUser's global taste profile (across all media):\n{global_profile['content']}\n"
+    if media_profile.get("content"):
+        profile_block += f"\nUser's {body.type}-specific taste profile:\n{media_profile['content']}\n"
 
     history = "\n".join(
         f"- ({e['date'] or '?'}) {e['title']}: {e['review']}"

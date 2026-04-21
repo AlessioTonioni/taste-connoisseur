@@ -291,6 +291,38 @@
 
     .profile-meta { font-size: 0.75rem; color: var(--muted); }
 
+    .profile-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .profile-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      margin-bottom: -1px;
+      border-radius: 0;
+      transition: color 0.15s;
+    }
+
+    .profile-tab:hover { color: var(--text); }
+
+    .profile-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--text);
+    }
+
+    .profile-tab-panel { display: none; }
+    .profile-tab-panel.active { display: block; }
+
     .profile-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -299,9 +331,9 @@
       margin-bottom: 1rem;
     }
 
-    #profile-text {
+    .profile-textarea {
       width: 100%;
-      min-height: 260px;
+      min-height: 220px;
       border: none;
       outline: none;
       font-family: inherit;
@@ -313,6 +345,14 @@
     }
 
     .profile-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+
+    .profile-refresh-bar {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
 
     .profile-empty {
       color: var(--muted);
@@ -573,17 +613,83 @@
     <div class="profile-header">
       <div>
         <h2>Your Taste Profile</h2>
-        <div class="profile-meta" id="profile-updated"></div>
       </div>
     </div>
-    <div class="profile-card">
-      <div id="profile-rendered" class="markdown profile-rendered"></div>
-      <textarea id="profile-text" style="display:none;" placeholder="No profile yet."></textarea>
+
+    <!-- Tab nav -->
+    <div class="profile-tabs">
+      <button class="profile-tab active" data-tab="global" onclick="switchProfileTab('global')">Global</button>
+      <button class="profile-tab" data-tab="movie"  onclick="switchProfileTab('movie')">Movie</button>
+      <button class="profile-tab" data-tab="series" onclick="switchProfileTab('series')">Series</button>
+      <button class="profile-tab" data-tab="book"   onclick="switchProfileTab('book')">Book</button>
+      <button class="profile-tab" data-tab="comic"  onclick="switchProfileTab('comic')">Comic</button>
     </div>
-    <div class="profile-actions">
+
+    <!-- Global panel -->
+    <div id="profile-panel-global" class="profile-tab-panel active">
+      <div class="profile-meta" id="profile-updated-global" style="margin-bottom:0.75rem;"></div>
+      <div class="profile-card">
+        <div id="profile-rendered-global" class="markdown profile-rendered"></div>
+        <textarea id="profile-text-global" class="profile-textarea" style="display:none;" placeholder="No global profile yet."></textarea>
+      </div>
+      <div class="profile-actions">
+        <button class="btn" id="btn-edit-global" onclick="toggleProfileEdit('global')">Edit</button>
+        <button class="btn btn-primary" id="btn-save-global" style="display:none;" onclick="saveProfile('global')">Save</button>
+      </div>
+    </div>
+
+    <!-- Per-type panels -->
+    <div id="profile-panel-movie" class="profile-tab-panel">
+      <div class="profile-meta" id="profile-updated-movie" style="margin-bottom:0.75rem;"></div>
+      <div class="profile-card">
+        <div id="profile-rendered-movie" class="markdown profile-rendered"></div>
+        <textarea id="profile-text-movie" class="profile-textarea" style="display:none;" placeholder="No movie profile yet."></textarea>
+      </div>
+      <div class="profile-actions">
+        <button class="btn" id="btn-edit-movie" onclick="toggleProfileEdit('movie')">Edit</button>
+        <button class="btn btn-primary" id="btn-save-movie" style="display:none;" onclick="saveProfile('movie')">Save</button>
+      </div>
+    </div>
+
+    <div id="profile-panel-series" class="profile-tab-panel">
+      <div class="profile-meta" id="profile-updated-series" style="margin-bottom:0.75rem;"></div>
+      <div class="profile-card">
+        <div id="profile-rendered-series" class="markdown profile-rendered"></div>
+        <textarea id="profile-text-series" class="profile-textarea" style="display:none;" placeholder="No series profile yet."></textarea>
+      </div>
+      <div class="profile-actions">
+        <button class="btn" id="btn-edit-series" onclick="toggleProfileEdit('series')">Edit</button>
+        <button class="btn btn-primary" id="btn-save-series" style="display:none;" onclick="saveProfile('series')">Save</button>
+      </div>
+    </div>
+
+    <div id="profile-panel-book" class="profile-tab-panel">
+      <div class="profile-meta" id="profile-updated-book" style="margin-bottom:0.75rem;"></div>
+      <div class="profile-card">
+        <div id="profile-rendered-book" class="markdown profile-rendered"></div>
+        <textarea id="profile-text-book" class="profile-textarea" style="display:none;" placeholder="No book profile yet."></textarea>
+      </div>
+      <div class="profile-actions">
+        <button class="btn" id="btn-edit-book" onclick="toggleProfileEdit('book')">Edit</button>
+        <button class="btn btn-primary" id="btn-save-book" style="display:none;" onclick="saveProfile('book')">Save</button>
+      </div>
+    </div>
+
+    <div id="profile-panel-comic" class="profile-tab-panel">
+      <div class="profile-meta" id="profile-updated-comic" style="margin-bottom:0.75rem;"></div>
+      <div class="profile-card">
+        <div id="profile-rendered-comic" class="markdown profile-rendered"></div>
+        <textarea id="profile-text-comic" class="profile-textarea" style="display:none;" placeholder="No comic profile yet."></textarea>
+      </div>
+      <div class="profile-actions">
+        <button class="btn" id="btn-edit-comic" onclick="toggleProfileEdit('comic')">Edit</button>
+        <button class="btn btn-primary" id="btn-save-comic" style="display:none;" onclick="saveProfile('comic')">Save</button>
+      </div>
+    </div>
+
+    <!-- Refresh bar (always visible) -->
+    <div class="profile-refresh-bar">
       <button class="btn btn-primary" id="btn-refresh" onclick="refreshProfile()">Refresh from log</button>
-      <button class="btn" id="btn-edit-profile" onclick="toggleProfileEdit()">Edit</button>
-      <button class="btn btn-primary" id="btn-save-profile" style="display:none;" onclick="saveProfile()">Save</button>
       <span id="profile-status" style="font-size:0.78rem; color:var(--muted);"></span>
     </div>
   </div>
@@ -818,61 +924,80 @@
   }
 
   // ── Profile ──
-  function renderProfile(content) {
-    const rendered = document.getElementById('profile-rendered');
+  const PROFILE_TABS = ['global', 'movie', 'series', 'book', 'comic'];
+
+  function renderProfileTab(tab, content) {
+    const rendered = document.getElementById(`profile-rendered-${tab}`);
+    const empty = tab === 'global'
+      ? 'No global profile yet. Hit "Refresh from log" to generate one.'
+      : `No ${tab} profile yet. Hit "Refresh from log" to generate one.`;
     if (content) {
       rendered.innerHTML = marked.parse(content);
     } else {
-      rendered.innerHTML = '<span style="color:var(--muted);font-style:italic;">No profile yet. Hit "Refresh from log" to generate one.</span>';
+      rendered.innerHTML = `<span style="color:var(--muted);font-style:italic;">${empty}</span>`;
     }
+  }
+
+  function switchProfileTab(tab) {
+    PROFILE_TABS.forEach(t => {
+      document.querySelector(`.profile-tab[data-tab="${t}"]`).classList.toggle('active', t === tab);
+      document.getElementById(`profile-panel-${t}`).classList.toggle('active', t === tab);
+    });
+  }
+
+  function _applyProfileData(tab, data) {
+    const content = data.content || '';
+    document.getElementById(`profile-text-${tab}`).value = content;
+    document.getElementById(`profile-updated-${tab}`).textContent =
+      data.updated_at ? `Last updated ${data.updated_at}` : '';
+    renderProfileTab(tab, content);
+    // Ensure read mode
+    document.getElementById(`profile-text-${tab}`).style.display     = 'none';
+    document.getElementById(`profile-rendered-${tab}`).style.display = '';
+    document.getElementById(`btn-edit-${tab}`).textContent           = 'Edit';
+    document.getElementById(`btn-save-${tab}`).style.display         = 'none';
   }
 
   async function loadProfile() {
-    const data = await fetch('/profile').then(r => r.json());
-    document.getElementById('profile-text').value = data.content || '';
-    document.getElementById('profile-updated').textContent = data.updated_at
-      ? `Last updated ${data.updated_at}` : '';
-    renderProfile(data.content);
+    const [globalData, ...mediaData] = await Promise.all([
+      fetch('/profile').then(r => r.json()),
+      ...['movie', 'series', 'book', 'comic'].map(t => fetch(`/profile/${t}`).then(r => r.json())),
+    ]);
+    _applyProfileData('global', globalData);
+    ['movie', 'series', 'book', 'comic'].forEach((t, i) => _applyProfileData(t, mediaData[i]));
   }
 
-  function toggleProfileEdit() {
-    const textarea = document.getElementById('profile-text');
-    const rendered = document.getElementById('profile-rendered');
-    const btnEdit  = document.getElementById('btn-edit-profile');
-    const btnSave  = document.getElementById('btn-save-profile');
+  function toggleProfileEdit(tab) {
+    const textarea = document.getElementById(`profile-text-${tab}`);
+    const rendered = document.getElementById(`profile-rendered-${tab}`);
+    const btnEdit  = document.getElementById(`btn-edit-${tab}`);
+    const btnSave  = document.getElementById(`btn-save-${tab}`);
     const editing  = textarea.style.display !== 'none';
     if (editing) {
-      // Cancel — restore rendered view
-      renderProfile(textarea.value);
-      textarea.style.display  = 'none';
-      rendered.style.display  = '';
-      btnEdit.textContent     = 'Edit';
-      btnSave.style.display   = 'none';
+      renderProfileTab(tab, textarea.value);
+      textarea.style.display = 'none';
+      rendered.style.display = '';
+      btnEdit.textContent    = 'Edit';
+      btnSave.style.display  = 'none';
     } else {
-      textarea.style.display  = '';
-      rendered.style.display  = 'none';
-      textarea.style.minHeight = '260px';
-      btnEdit.textContent     = 'Cancel';
-      btnSave.style.display   = '';
+      textarea.style.display = '';
+      rendered.style.display = 'none';
+      btnEdit.textContent    = 'Cancel';
+      btnSave.style.display  = '';
     }
   }
 
-  async function saveProfile() {
-    const content = document.getElementById('profile-text').value.trim();
+  async function saveProfile(tab) {
+    const content = document.getElementById(`profile-text-${tab}`).value.trim();
     const status  = document.getElementById('profile-status');
     status.textContent = 'Saving…';
-    const data = await fetch('/profile', {
+    const url    = tab === 'global' ? '/profile' : `/profile/${tab}`;
+    const data   = await fetch(url, {
       method: 'PUT',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ content }),
     }).then(r => r.json());
-    document.getElementById('profile-updated').textContent = `Last updated ${data.updated_at}`;
-    renderProfile(content);
-    // Close edit mode
-    document.getElementById('profile-text').style.display  = 'none';
-    document.getElementById('profile-rendered').style.display = '';
-    document.getElementById('btn-edit-profile').textContent   = 'Edit';
-    document.getElementById('btn-save-profile').style.display = 'none';
+    _applyProfileData(tab, data);
     status.textContent = 'Saved.';
     setTimeout(() => status.textContent = '', 2000);
   }
@@ -880,19 +1005,15 @@
   async function refreshProfile() {
     const btn    = document.getElementById('btn-refresh');
     const status = document.getElementById('profile-status');
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'Generating…';
     status.textContent = '';
     try {
-      const data = await fetch('/profile/refresh', { method: 'POST' }).then(r => r.json());
-      document.getElementById('profile-text').value = data.content || '';
-      document.getElementById('profile-updated').textContent = `Last updated ${data.updated_at}`;
-      renderProfile(data.content);
-      // Ensure we're in read mode
-      document.getElementById('profile-text').style.display     = 'none';
-      document.getElementById('profile-rendered').style.display = '';
-      document.getElementById('btn-edit-profile').textContent   = 'Edit';
-      document.getElementById('btn-save-profile').style.display = 'none';
+      const resp = await fetch('/profile/refresh', { method: 'POST' }).then(r => r.json());
+      _applyProfileData('global', resp.global);
+      ['movie', 'series', 'book', 'comic'].forEach(t => {
+        if (resp.media[t]) _applyProfileData(t, resp.media[t]);
+      });
       status.textContent = 'Done.';
       setTimeout(() => status.textContent = '', 2000);
     } catch (e) {
