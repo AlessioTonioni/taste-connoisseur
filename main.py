@@ -353,8 +353,10 @@ def suggest(body: SuggestRequest):
     if body.type not in db.VALID_TYPES:
         raise HTTPException(400, f"type must be one of {db.VALID_TYPES}")
 
-    # Only send the relevant media type entries to the model (last 5)
-    entries = db.get_all_with_reviews(type_filter=body.type)[:5]
+    # All entries of this type — used to build the exclusion list
+    all_entries = db.get_all(type_filter=body.type)
+    # Only send the last 5 reviewed entries as journal context
+    entries = [e for e in all_entries if e.get("review")][:5]
     if not entries:
         raise HTTPException(400, f"No reviewed {body.type} entries yet — add some first!")
 
@@ -368,6 +370,8 @@ def suggest(body: SuggestRequest):
         profile_block += f"\nUser's global taste profile (across all media):\n{global_profile['content']}\n"
     if media_profile.get("content"):
         profile_block += f"\nUser's {body.type}-specific taste profile:\n{media_profile['content']}\n"
+
+    all_titles = "\n".join(f"- {e['title']}" for e in all_entries)
 
     history = "\n".join(
         f"- ({e['date'] or '?'}) {e['title']}: {e['review']}"
@@ -413,14 +417,17 @@ Rules:
 - In the rationale, explicitly touch upon why this matches the requested 'comfort zone' level (e.g. why it's a safe bet or why it's an interesting risk).
 - Absolutely no spoilers — do not reveal plot twists, endings, or major developments.
 - Prefer recent or currently relevant titles where appropriate (today is {today}).
-- Do not repeat anything already in their journal.
+- IMPORTANT: Do NOT suggest any title that appears in the complete log below. This list is exhaustive — every title on it has already been seen or logged.
 {streaming_block}- Respond in English.
 
 Format your response as:
 **Title** (year)
 [your paragraph]
 
-Last 5 {body.type} journal entries:
+Complete {body.type} log (do not suggest any of these):
+{all_titles}
+
+Last 5 {body.type} journal entries (for taste context):
 {history}"""
 
     suggestion = llm.complete(prompt, use_search=body.use_search)
