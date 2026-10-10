@@ -14,7 +14,7 @@ from fastapi import HTTPException
 _CONFIG_PATH = Path(__file__).parent / "config.json"
 _DEFAULTS = {
     "anthropic_model": "claude-opus-4-6",
-    "gemini_model":    "gemini-3-flash-preview",
+    "gemini_model":    "gemini-3.8-flash",
 }
 
 
