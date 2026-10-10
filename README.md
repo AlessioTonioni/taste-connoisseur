@@ -45,7 +45,7 @@ Model names can be changed in `config.json` without touching any code:
 
 ```json
 {
-  "anthropic_model": "claude-opus-4-6",
+  "anthropic_model": "claude-opus-5-5",
   "gemini_model": "gemini-3.8-flash"
 }
 ```
